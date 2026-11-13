@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Wand-Dashboard</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1e222b;
+    --line: #2a2f3a;
+    --text: #e8eaf0;
+    --muted: #8b92a3;
+    --accent: #6ea8fe;
+    --exam: #ff7a7a;
+    --due: #ffc266;
+    --appt: #7fd6a4;
+    --done: #555c6b;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-user-select: none; user-select: none; overflow: hidden; }
+  body.night { filter: brightness(0.45); }
+  .app { display: flex; height: 100%; }
+
+  /* ---------- Kalender-Sidebar ---------- */
+  .side { width: 34%; min-width: 300px; background: var(--panel); border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; touch-action: pan-y; }
+  .side-head { padding: 22px 22px 12px; display: flex; align-items: center; gap: 10px; }
+  .side-head .day { flex: 1; }
+  .side-head .wd { font-size: 15px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .side-head .dt { font-size: 26px; font-weight: 600; margin-top: 2px; white-space: nowrap; }
+  .nav { width: 46px; height: 46px; border-radius: 23px; border: 1px solid var(--line); background: var(--panel-2);
+    color: var(--text); font-size: 22px; line-height: 44px; text-align: center; }
+  .nav:active { background: var(--line); }
+  .today-btn { font-size: 13px; color: var(--accent); padding: 0 22px 10px; min-height: 26px; }
+  .strip { display: flex; padding: 0 14px 14px; gap: 6px; }
+  .strip div { flex: 1; text-align: center; padding: 8px 0; border-radius: 10px; color: var(--muted); font-size: 13px; }
+  .strip div b { display: block; font-size: 18px; color: var(--text); font-weight: 500; margin-top: 2px; }
+  .strip div.sel { background: var(--accent); color: #0b1020; }
+  .strip div.sel b { color: #0b1020; }
+  .strip div .dot { display: block; width: 5px; height: 5px; border-radius: 3px; margin: 4px auto 0; background: transparent; }
+  .strip div .dot.on { background: var(--muted); }
+  .events { flex: 1; overflow-y: auto; padding: 4px 18px 18px; }
+  .ev { display: flex; gap: 12px; padding: 12px 12px; margin-bottom: 8px; border-radius: 12px; background: var(--panel-2);
+    border-left: 4px solid var(--accent); }
+  .ev .t { width: 56px; font-size: 14px; color: var(--muted); flex-shrink: 0; }
+  .ev .t b { display: block; color: var(--text); font-size: 16px; font-weight: 600; }
+  .ev .n { font-size: 17px; line-height: 1.3; }
+  .ev .c { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .ev.past { opacity: .45; }
+  .ev.now { box-shadow: 0 0 0 1px var(--accent) inset; }
+  .empty { color: var(--muted); text-align: center; margin-top: 40px; font-size: 15px; }
+
+  /* ---------- Hauptbereich ---------- */
+  .main { flex: 1; display: flex; flex-direction: column; padding: 22px 26px; min-width: 0; }
+  .top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 18px; }
+  .clock { font-size: 64px; font-weight: 300; letter-spacing: -.02em; line-height: 1; }
+  .greet { font-size: 17px; color: var(--muted); text-align: right; }
+  .greet b { color: var(--text); font-weight: 500; display: block; font-size: 20px; }
+  .grid { flex: 1; display: flex; gap: 18px; min-height: 0; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px 20px;
+    display: flex; flex-direction: column; min-height: 0; }
+  .card h2 { margin: 0 0 12px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .1em; display: flex; justify-content: space-between; }
+  .card h2 span { color: var(--text); letter-spacing: 0; }
+  .todos { flex: 1.35; }
+  .deadlines { flex: 1; }
+  .list { overflow-y: auto; flex: 1; }
+  .todo { display: flex; align-items: flex-start; gap: 14px; padding: 13px 4px; border-bottom: 1px solid var(--line); }
+  .todo:last-child { border-bottom: 0; }
+  .box { width: 26px; height: 26px; border-radius: 8px; border: 2px solid var(--muted); flex-shrink: 0; margin-top: 1px; }
+  .todo.done .box { background: var(--done); border-color: var(--done); }
+  .todo .txt { font-size: 19px; line-height: 1.3; }
+  .todo.done .txt { color: var(--done); text-decoration: line-through; }
+  .todo .meta { font-size: 13px; color: var(--muted); margin-top: 3px; }
+  .todo .meta.late { color: var(--exam); }
+  .todo.prio .txt::before { content: "!"; color: var(--exam); font-weight: 700; margin-right: 6px; }
+  .dl { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .dl:last-child { border-bottom: 0; }
+  .cd { width: 62px; text-align: center; border-radius: 12px; padding: 7px 0; background: var(--panel-2); flex-shrink: 0; }
+  .cd b { display: block; font-size: 24px; font-weight: 600; line-height: 1.1; }
+  .cd small { font-size: 11px; color: var(--muted); }
+  .dl.exam .cd b { color: var(--exam); }
+  .dl.due .cd b { color: var(--due); }
+  .dl.appt .cd b { color: var(--appt); }
+  .dl .n { font-size: 17px; line-height: 1.3; }
+  .dl .c { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 6px; margin-right: 6px; background: var(--panel-2); }
+  .add-btn { width: 40px; height: 40px; margin: -10px -6px -10px 12px; border-radius: 20px; background: var(--accent); color: #0b1020;
+    font-size: 26px; line-height: 38px; text-align: center; letter-spacing: 0; font-weight: 400; flex-shrink: 0; }
+  .card h2 .grow { flex: 1; color: var(--muted); letter-spacing: .1em; }
+  .addrow { display: none; margin-bottom: 10px; }
+  .addrow.open { display: block; }
+  .addrow input { width: 100%; font-size: 19px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line);
+    background: var(--panel-2); color: var(--text); outline: none; -webkit-user-select: text; user-select: text; }
+  .addrow input:focus { border-color: var(--accent); }
+  .chips { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .chip { padding: 8px 14px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); font-size: 14px; color: var(--muted); }
+  .chip.sel { border-color: var(--accent); color: var(--text); }
+  .chip.ok { background: var(--accent); color: #0b1020; border-color: var(--accent); margin-left: auto; font-weight: 600; }
+  .foot { font-size: 11px; color: var(--muted); margin-top: 10px; text-align: right; }
+  .foot .err { color: var(--due); }
+
+  #setup { display: none; position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(8, 9, 12, .94); overflow-y: auto; z-index: 10; }
+  .sbox { max-width: 560px; margin: 6vh auto; padding: 0 22px 40px; }
+  .sbox h1 { font-size: 26px; margin: 0 0 6px; }
+  .sbox p { color: var(--muted); margin: 0 0 18px; }
+  .sbox label { display: block; font-size: 14px; color: var(--muted); margin: 14px 0 6px; }
+  .sbox input { width: 100%; font-size: 18px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line);
+    background: var(--panel-2); color: var(--text); outline: none; -webkit-user-select: text; user-select: text; }
+  .sbox input:focus { border-color: var(--accent); }
+  #sMsg { color: var(--due); min-height: 22px; margin: 14px 0; font-size: 15px; line-height: 1.4; }
+  .srow { display: flex; gap: 10px; }
+  .srow .chip { font-size: 16px; padding: 12px 18px; }
+  .srow .chip.ok { margin-left: 0; }
+
+  /* Hochformat */
+  @media (orientation: portrait) {
+    .app { flex-direction: column; }
+    .side { width: 100%; height: 42%; border-right: 0; border-bottom: 1px solid var(--line); }
+    .grid { flex-direction: column; }
+    .clock { font-size: 48px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side" id="side">
+    <div class="side-head">
+      <div class="nav" id="prev">&#8249;</div>
+      <div class="day"><div class="wd" id="wd"></div><div class="dt" id="dt"></div></div>
+      <div class="nav" id="next">&#8250;</div>
+    </div>
+    <div class="today-btn" id="todayBtn"></div>
+    <div class="strip" id="strip"></div>
+    <div class="events" id="events"></div>
+  </aside>
+
+  <main class="main">
+    <div class="top">
+      <div class="clock" id="clock">--:--</div>
+      <div class="greet" id="greet"></div>
+    </div>
+    <div class="grid">
+      <section class="card todos">
+        <h2><span class="grow">To-dos</span> <span id="todoCount"></span><div class="add-btn" id="addBtn">+</div></h2>
+        <div class="addrow" id="addRow">
+          <input id="addText" type="text" placeholder="Neues To-do …" autocomplete="off" enterkeyhint="done">
+          <div class="chips" id="addChips">
+            <div class="chip sel" data-d="">ohne Datum</div><div class="chip" data-d="0">heute</div>
+            <div class="chip" data-d="1">morgen</div><div class="chip" data-d="7">in 1 Woche</div>
+            <div class="chip ok" id="addOk">Hinzufügen</div>
+          </div>
+        </div>
+        <div class="list" id="todos"></div>
+      </section>
+      <section class="card deadlines">
+        <h2>Prüfungen &amp; Fristen</h2>
+        <div class="list" id="deadlines"></div>
+      </section>
+    </div>
+    <div class="foot"><span id="foot"></span> &nbsp;·&nbsp; <span id="openSetup" style="text-decoration:underline">Einstellungen</span></div>
+  </main>
+</div>
+
+<div id="setup">
+  <div class="sbox">
+    <h1>Dashboard einrichten</h1>
+    <p>Diese Angaben bleiben nur auf diesem Gerät gespeichert.</p>
+    <label>Dein Name (für die Begrüßung)</label><input id="sName" autocomplete="off">
+    <label>GitHub-Projekt mit deinen Daten</label><input id="sRepo" autocomplete="off" autocapitalize="off" placeholder="Name/wand-dashboard">
+    <label>Zugangsschlüssel (Token)</label><input id="sToken" type="password" autocomplete="off">
+    <div id="sMsg"></div>
+    <div class="srow"><div class="chip ok" id="sSave">Speichern</div><div class="chip" id="sDemo">Beispiel ansehen</div><div class="chip" id="sCancel">Abbrechen</div></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var WD = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+  var WDS = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+  var MO = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+  var REFRESH_MS = 2 * 60 * 1000;     // alle 2 Minuten neue Daten
+  var BACK_TO_TODAY_MS = 90 * 1000;   // nach 90 s ohne Berührung zurück zu heute
+  var NIGHT_FROM = 23, NIGHT_TO = 6;  // gedimmt zwischen 23 und 6 Uhr
+
+  var data = { events: [], todos: [], deadlines: [] };
+  var offset = 0;      // Tage relativ zu heute
+  var idleTimer = null;
+  var lastEdit = 0;
+
+  function $(id) { return document.getElementById(id); }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function startOfDay(d) { var x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
+  function addDays(d, n) { var x = new Date(d); x.setDate(x.getDate() + n); return x; }
+  function sameDay(a, b) { return startOfDay(a).getTime() === startOfDay(b).getTime(); }
+  function hm(d) { return pad(d.getHours()) + ":" + pad(d.getMinutes()); }
+  function toDate(v) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v));
+    return m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(v);
+  }
+  function daysUntil(d) { d = toDate(d); return Math.round((startOfDay(d) - startOfDay(new Date())) / 86400000); }
+  function shortDate(d) { return WDS[d.getDay()] + ", " + d.getDate() + ". " + MO[d.getMonth()].slice(0, 3) + "."; }
+
+  // ---------- Kalender ----------
+  function eventsOn(day) {
+    var s = startOfDay(day), e = addDays(s, 1);
+    return data.events.filter(function (ev) {
+      var a = new Date(ev.start), b = new Date(ev.end || ev.start);
+      if (ev.allDay) return a < e && (b > s || sameDay(a, s));
+      return a < e && b >= s;
+    }).sort(function (x, y) {
+      if (x.allDay !== y.allDay) return x.allDay ? -1 : 1;
+      return new Date(x.start) - new Date(y.start);
+    });
+  }
+
+  function renderCalendar() {
+    var now = new Date(), day = addDays(startOfDay(now), offset);
+    $("wd").textContent = offset === 0 ? "Heute · " + WD[day.getDay()] : offset === 1 ? "Morgen · " + WD[day.getDay()] :
+      offset === -1 ? "Gestern · " + WD[day.getDay()] : WD[day.getDay()];
+    $("dt").textContent = day.getDate() + ". " + MO[day.getMonth()];
+    $("todayBtn").innerHTML = offset === 0 ? "" : "&#8634; Zurück zu heute";
+
+    var strip = "";
+    for (var i = -2; i <= 4; i++) {
+      var d = addDays(day, i);
+      var has = eventsOn(d).length > 0;
+      strip += '<div data-o="' + (offset + i) + '" class="' + (i === 0 ? "sel" : "") + '">' + WDS[d.getDay()] +
+        "<b>" + d.getDate() + '</b><span class="dot' + (has ? " on" : "") + '"></span></div>';
+    }
+    $("strip").innerHTML = strip;
+
+    var list = eventsOn(day), html = "";
+    list.forEach(function (ev) {
+      var a = new Date(ev.start), b = new Date(ev.end || ev.start);
+      var cls = "ev";
+      if (!ev.allDay && b < now) cls += " past";
+      if (!ev.allDay && a <= now && b > now) cls += " now";
+      var color = ev.color ? ' style="border-left-color:' + esc(ev.color) + '"' : "";
+      html += '<div class="' + cls + '"' + color + '><div class="t">' +
+        (ev.allDay ? "<b>ganzt.</b>" : "<b>" + hm(a) + "</b>" + hm(b)) +
+        '</div><div><div class="n">' + esc(ev.title) + "</div>" +
+        (ev.location || ev.calendar ? '<div class="c">' + esc([ev.location, ev.calendar].filter(Boolean).join(" · ")) + "</div>" : "") +
+        "</div></div>";
+    });
+    $("events").innerHTML = html || '<div class="empty">Keine Termine</div>';
+  }
+
+  function go(delta) { offset += delta; renderCalendar(); armIdle(); }
+  function armIdle() {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(function () { offset = 0; renderCalendar(); }, BACK_TO_TODAY_MS);
+  }
+
+  // Wischen
+  var sx = null, sy = null;
+  var side = $("side");
+  side.addEventListener("touchstart", function (e) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+  side.addEventListener("touchend", function (e) {
+    if (sx === null) return;
+    var dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+    sx = null;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.3) go(dx < 0 ? 1 : -1);
+  });
+  $("prev").onclick = function () { go(-1); };
+  $("next").onclick = function () { go(1); };
+  $("todayBtn").onclick = function () { offset = 0; renderCalendar(); };
+  $("strip").onclick = function (e) {
+    var t = e.target.closest ? e.target.closest("[data-o]") : null;
+    if (t) { offset = parseInt(t.getAttribute("data-o"), 10); renderCalendar(); armIdle(); }
+  };
+
+  // ---------- To-dos ----------
+  function renderTodos() {
+    var open = data.todos.filter(function (t) { return !t.done; });
+    var done = data.todos.filter(function (t) { return t.done; }).slice(0, 3);
+    open.sort(function (a, b) {
+      if (!!b.prio !== !!a.prio) return b.prio ? 1 : -1;
+      if (a.due && b.due) return toDate(a.due) - toDate(b.due);
+      return a.due ? -1 : b.due ? 1 : 0;
+    });
+    var html = "";
+    open.concat(done).forEach(function (t) {
+      var meta = "", late = false;
+      if (t.due) {
+        var n = daysUntil(t.due);
+        late = n < 0 && !t.done;
+        meta = n === 0 ? "heute" : n === 1 ? "morgen" : n < 0 ? "überfällig seit " + -n + " Tag" + (n === -1 ? "" : "en") :
+          "bis " + shortDate(toDate(t.due));
+      }
+      if (t.note) meta = meta ? meta + " · " + t.note : t.note;
+      html += '<div class="todo' + (t.done ? " done" : "") + (t.prio ? " prio" : "") + '" data-id="' + esc(t.id) + '">' +
+        '<div class="box"></div><div><div class="txt">' + esc(t.text) + "</div>" +
+        (meta ? '<div class="meta' + (late ? " late" : "") + '">' + esc(meta) + "</div>" : "") + "</div></div>";
+    });
+    $("todos").innerHTML = html || '<div class="empty">Alles erledigt &#127881;</div>';
+    $("todoCount").textContent = open.length ? open.length + " offen" : "";
+  }
+
+  // Antippen = erledigt (wird an den Server gemeldet, falls vorhanden)
+  $("todos").onclick = function (e) {
+    var el = e.target.closest ? e.target.closest(".todo") : null;
+    if (!el) return;
+    var id = el.getAttribute("data-id");
+    data.todos.forEach(function (t) { if (String(t.id) === id) t.done = !t.done; });
+    lastEdit = Date.now();
+    renderTodos();
+    saveTodos(function (items) {
+      items.forEach(function (t) {
+        if (String(t.id) !== id) return;
+        t.done = !t.done;
+        if (t.done) t.doneAt = new Date().toISOString(); else delete t.doneAt;
+      });
+    }, "To-do abgehakt");
+  };
+
+  // Neues To-do direkt am Tablet anlegen
+  var addDays_ = "";
+  $("addBtn").onclick = function () {
+    var row = $("addRow"), open = row.className.indexOf("open") < 0;
+    row.className = "addrow" + (open ? " open" : "");
+    $("addBtn").textContent = open ? "\u00d7" : "+";
+    if (open) $("addText").focus(); else $("addText").blur();
+  };
+  $("addChips").onclick = function (e) {
+    var c = e.target;
+    if (c.id === "addOk") return submitTodo();
+    if (c.getAttribute("data-d") === null) return;
+    addDays_ = c.getAttribute("data-d");
+    var all = $("addChips").children;
+    for (var i = 0; i < all.length; i++) if (all[i].id !== "addOk") all[i].className = "chip" + (all[i] === c ? " sel" : "");
+  };
+  $("addText").onkeydown = function (e) { if (e.keyCode === 13) submitTodo(); };
+  function submitTodo() {
+    var text = $("addText").value.replace(/^\s+|\s+$/g, "");
+    if (!text) return;
+    var todo = { id: "t" + Date.now().toString(36), text: text };
+    if (addDays_ !== "") {
+      var d = addDays(startOfDay(new Date()), parseInt(addDays_, 10));
+      todo.due = d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+    }
+    data.todos.push(todo); lastEdit = Date.now();
+    renderTodos();
+    $("addText").value = "";
+    $("addChips").children[0].click(); // Datum wieder auf "ohne Datum"
+    $("addBtn").onclick();
+    saveTodos(function (items) { items.push(todo); }, "Neu: " + text);
+  }
+
+  // ---------- Prüfungen & Fristen ----------
+  function renderDeadlines() {
+    var now = startOfDay(new Date());
+    var list = data.deadlines.filter(function (d) { return toDate(d.date) >= now; })
+      .sort(function (a, b) { return toDate(a.date) - toDate(b.date); }).slice(0, 12);
+    var LABEL = { exam: "Prüfung", due: "Abgabe", appt: "Termin" };
+    var html = "";
+    list.forEach(function (d) {
+      var n = daysUntil(d.date), dt = toDate(d.date);
+      var type = LABEL[d.type] ? d.type : "appt";
+      html += '<div class="dl ' + type + '"><div class="cd"><b>' + (n === 0 ? "heute" : n) + "</b><small>" +
+        (n === 0 ? "" : n === 1 ? "Tag" : "Tage") + '</small></div><div><div class="n">' + esc(d.title) +
+        '</div><div class="c"><span class="tag">' + LABEL[type] + "</span>" + shortDate(dt) +
+        (d.allDay === false ? ", " + hm(dt) : "") + (d.source ? " · " + esc(d.source) : "") + "</div></div></div>";
+    });
+    $("deadlines").innerHTML = html || '<div class="empty">Nichts in Sicht</div>';
+  }
+
+  // ---------- Uhr, Gruß, Nachtmodus ----------
+  function tick() {
+    var now = new Date(), h = now.getHours();
+    $("clock").textContent = hm(now);
+    var g = h < 11 ? "Guten Morgen" : h < 18 ? "Hallo" : "Guten Abend";
+    $("greet").innerHTML = "<b>" + g + (data.name ? ", " + esc(data.name) : "") + "</b>" +
+      WD[now.getDay()] + ", " + now.getDate() + ". " + MO[now.getMonth()] + " " + now.getFullYear();
+    document.body.className = (h >= NIGHT_FROM || h < NIGHT_TO) ? "night" : "";
+  }
+
+  // ---------- Daten laden ----------
+  function renderAll() { renderCalendar(); renderTodos(); renderDeadlines(); tick(); }
+
+
+  // ---------- Verbindung zu GitHub (dort liegen Termine und To-dos) ----------
+  var store = {
+    get: function (k) { try { return localStorage.getItem("wand." + k) || ""; } catch (e) { return ""; } },
+    set: function (k, v) { try { localStorage.setItem("wand." + k, v); } catch (e) {} }
+  };
+  var m = /[?&]repo=([\w.-]+\/[\w.-]+)/.exec(location.search);
+  if (m) store.set("repo", m[1]);
+  var todoSha = null, saving = Promise.resolve();
+
+  function b64decode(s) { return decodeURIComponent(escape(atob(String(s).replace(/\s/g, "")))); }
+  function b64encode(s) { return btoa(unescape(encodeURIComponent(s))); }
+
+  function api(method, file, body) {
+    return new Promise(function (resolve, reject) {
+      var x = new XMLHttpRequest();
+      x.open(method, "https://api.github.com/repos/" + store.get("repo") + "/contents/" + file +
+        (method === "GET" ? "?t=" + Date.now() : ""));
+      x.setRequestHeader("Authorization", "Bearer " + store.get("token"));
+      x.setRequestHeader("Accept", "application/vnd.github+json");
+      x.timeout = 25000;
+      x.onload = function () {
+        var j = null; try { j = JSON.parse(x.responseText); } catch (e) {}
+        if (x.status >= 200 && x.status < 300) resolve(j);
+        else { var err = new Error("HTTP " + x.status); err.status = x.status; reject(err); }
+      };
+      x.onerror = x.ontimeout = function () { var err = new Error("offline"); err.status = 0; reject(err); };
+      x.send(body ? JSON.stringify(body) : null);
+    });
+  }
+  function readJson(file, fallback) {
+    return api("GET", file).then(function (j) {
+      return { value: JSON.parse(b64decode(j.content)), sha: j.sha };
+    }, function (e) {
+      if (e.status === 404) return { value: fallback, sha: null };
+      throw e;
+    });
+  }
+
+  // Änderung an der To-do-Liste speichern: neuesten Stand holen, ändern, zurückschreiben
+  function saveTodos(change, message) {
+    lastEdit = Date.now();
+    if (!store.get("token")) return;
+    saving = saving.then(function () { return attempt(0); }).then(function () { lastEdit = Date.now(); }, function () {
+      setFoot("Änderung konnte nicht gespeichert werden", true);
+    });
+    function attempt(n) {
+      return readJson("data/todos.json", []).then(function (r) {
+        var items = Array.isArray(r.value) ? r.value : [];
+        change(items);
+        var body = { message: message, content: b64encode(JSON.stringify(items, null, 2) + "\n") };
+        if (r.sha) body.sha = r.sha;
+        return api("PUT", "data/todos.json", body).then(function () { data.todos = items; renderTodos(); });
+      }).catch(function (e) {
+        if (n < 2 && (e.status === 409 || e.status === 422 || e.status === 0)) return attempt(n + 1);
+        throw e;
+      });
+    }
+  }
+
+  function setFoot(text, bad) { $("foot").className = bad ? "err" : ""; $("foot").textContent = text; }
+
+  function load() {
+    if (!store.get("token") || !store.get("repo")) { showSetup(); return; }
+    Promise.all([
+      readJson("data/data.json", {}), readJson("data/todos.json", []), readJson("data/deadlines.json", [])
+    ]).then(function (r) {
+      var d = r[0].value || {}, keep = Date.now() - lastEdit < 20000;
+      var seen = {}, deadlines = [];
+      (d.deadlines || []).concat(Array.isArray(r[2].value) ? r[2].value : []).forEach(function (x) {
+        if (!x || !x.title || !x.date) return;
+        var k = String(x.title).toLowerCase() + "|" + String(x.date).slice(0, 10);
+        if (!seen[k]) { seen[k] = true; deadlines.push(x); }
+      });
+      data = {
+        name: store.get("name") || d.name || "", events: d.events || [], deadlines: deadlines,
+        todos: keep ? data.todos : (Array.isArray(r[1].value) ? r[1].value : []), errors: d.errors || []
+      };
+      try { store.set("cache", JSON.stringify(data)); } catch (e) {}
+      var stale = d.updated ? " · Termine vom " + shortDate(new Date(d.updated)) + " " + hm(new Date(d.updated)) : "";
+      setFoot("Aktualisiert " + hm(new Date()) + (data.errors.length ? " · Problem mit: " + data.errors.join(", ") : stale), data.errors.length > 0);
+      renderAll();
+    }).catch(function (e) {
+      if (e.status === 401 || e.status === 403 || e.status === 404) {
+        setFoot("GitHub lehnt den Zugang ab (" + e.status + "). Bitte unter Einstellungen den Schlüssel prüfen.", true);
+      } else {
+        setFoot("Keine Internetverbindung, zeige letzten Stand", true);
+      }
+    });
+  }
+
+  // ---------- Einrichtung ----------
+  function showSetup() {
+    $("setup").style.display = "block";
+    $("sRepo").value = store.get("repo");
+    $("sName").value = store.get("name");
+    $("sToken").value = "";
+    $("sToken").placeholder = store.get("token") ? "gespeichert (leer lassen, um ihn zu behalten)" : "github_pat_…";
+    $("sMsg").textContent = "";
+  }
+  $("openSetup").onclick = showSetup;
+  $("sCancel").onclick = function () { $("setup").style.display = "none"; };
+  $("sDemo").onclick = function () { data = sampleData(); renderAll(); $("setup").style.display = "none"; setFoot("Beispieldaten", true); };
+  $("sSave").onclick = function () {
+    var repo = $("sRepo").value.replace(/\s/g, "").replace(/^https?:\/\/github\.com\//, "").replace(/\/$/, "");
+    var token = $("sToken").value.replace(/\s/g, "") || store.get("token");
+    if (!/^[\w.-]+\/[\w.-]+$/.test(repo) || !token) { $("sMsg").textContent = "Bitte Projekt (Name/Projekt) und Schlüssel eintragen."; return; }
+    var oldRepo = store.get("repo"), oldToken = store.get("token");
+    store.set("repo", repo); store.set("token", token); store.set("name", $("sName").value.replace(/^\s+|\s+$/g, ""));
+    $("sMsg").textContent = "Teste Verbindung …";
+    api("GET", "data/todos.json").then(function () {
+      $("setup").style.display = "none"; load();
+    }, function (e) {
+      store.set("repo", oldRepo); store.set("token", oldToken);
+      $("sMsg").textContent = e.status === 0 ? "Keine Internetverbindung." :
+        "Das hat nicht geklappt (Fehler " + e.status + "). Stimmen Projektname und Schlüssel, und darf der Schlüssel auf dieses Projekt zugreifen?";
+    });
+  };
+
+  function sampleData() {
+    var t = startOfDay(new Date());
+    function at(d, h, m) { var x = addDays(t, d); x.setHours(h, m || 0); return x.toISOString(); }
+    return {
+      sample: true, name: "",
+      events: [
+        { title: "Vorlesung Mathe II", start: at(0, 10), end: at(0, 11, 30), location: "Hörsaal 3", calendar: "Uni", color: "#6ea8fe" },
+        { title: "Mittag mit Lena", start: at(0, 13), end: at(0, 14), calendar: "Privat", color: "#7fd6a4" },
+        { title: "Fitnessstudio", start: at(0, 18), end: at(0, 19, 30), calendar: "Privat", color: "#7fd6a4" },
+        { title: "Tutorium Statistik", start: at(1, 9), end: at(1, 10, 30), location: "Raum B204", calendar: "Uni", color: "#6ea8fe" },
+        { title: "Zahnarzt", start: at(2, 15), end: at(2, 15, 45), calendar: "Privat", color: "#ffc266" },
+        { title: "Geburtstag Mama", start: at(3, 0), end: at(4, 0), allDay: true, calendar: "Familie", color: "#ff7a7a" }
+      ],
+      todos: [
+        { id: 1, text: "Übungsblatt 5 Statistik", due: at(2, 23), prio: true },
+        { id: 2, text: "Wohnungsversicherung kündigen", due: at(-1, 12) },
+        { id: 3, text: "Geschenk für Mama besorgen", due: at(2, 18) },
+        { id: 4, text: "Bewerbung Werkstudent abschicken" },
+        { id: 5, text: "Wäsche waschen", done: true }
+      ],
+      deadlines: [
+        { title: "Abgabe Hausarbeit BWL", date: at(5, 23, 59), type: "due", source: "Moodle" },
+        { title: "Klausur Mathe II", date: at(12, 9), type: "exam", allDay: false, source: "Campus" },
+        { title: "Rückmeldung Sommersemester", date: at(20, 0), type: "due", source: "Gmail" },
+        { title: "Klausur Statistik", date: at(26, 13), type: "exam", allDay: false, source: "Campus" }
+      ]
+    };
+  }
+
+  try { var cached = JSON.parse(store.get("cache") || "null"); if (cached && cached.events) data = cached; } catch (e) {}
+  renderAll();
+  load();
+  setInterval(load, REFRESH_MS);
+  setInterval(tick, 15000);
+  // Mitternacht: Kalender auf neuen Tag umstellen
+  setInterval(function () { if (offset === 0) renderCalendar(); }, 60000);
+})();
+</script>
+</body>
+</html>
