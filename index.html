@@ -185,7 +185,7 @@
   var MO = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
   var REFRESH_MS = 2 * 60 * 1000;     // alle 2 Minuten neue Daten
   var BACK_TO_TODAY_MS = 90 * 1000;   // nach 90 s ohne Berührung zurück zu heute
-  var NIGHT_FROM = 23, NIGHT_TO = 6;  // gedimmt zwischen 23 und 6 Uhr
+  var NIGHT_FROM = 0, NIGHT_TO = 0;  // gedimmt zwischen 23 und 6 Uhr
 
   var data = { events: [], todos: [], deadlines: [] };
   var offset = 0;      // Tage relativ zu heute
