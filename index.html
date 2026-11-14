@@ -449,8 +449,23 @@
 
   function setFoot(text, bad) { $("foot").className = bad ? "err" : ""; $("foot").textContent = text; }
 
+  // Alle 30 Minuten bei GitHub einen frischen Abruf der Kalender anstoßen
+  var DISPATCH_MS = 30 * 60 * 1000;
+  function requestRefresh(force) {
+    var last = parseInt(store.get("dispatched") || "0", 10);
+    if (!force && Date.now() - last < DISPATCH_MS) return;
+    store.set("dispatched", String(Date.now()));
+    var x = new XMLHttpRequest();
+    x.open("POST", "https://api.github.com/repos/" + store.get("repo") + "/dispatches");
+    x.setRequestHeader("Authorization", "Bearer " + store.get("token"));
+    x.setRequestHeader("Accept", "application/vnd.github+json");
+    x.onload = function () { if (force) { setFoot("Kalender werden neu abgerufen, das dauert etwa eine Minute …"); setTimeout(load, 60000); } };
+    x.send(JSON.stringify({ event_type: "refresh" }));
+  }
+
   function load() {
     if (!store.get("token") || !store.get("repo")) { showSetup(); return; }
+    requestRefresh(false);
     Promise.all([
       readJson("data/data.json", {}), readJson("data/todos.json", []), readJson("data/deadlines.json", [])
     ]).then(function (r) {
@@ -488,6 +503,7 @@
     $("sMsg").textContent = "";
   }
   $("openSetup").onclick = showSetup;
+  $("clock").onclick = function () { requestRefresh(true); };
   $("sCancel").onclick = function () { $("setup").style.display = "none"; };
   $("sDemo").onclick = function () { data = sampleData(); renderAll(); $("setup").style.display = "none"; setFoot("Beispieldaten", true); };
   $("sSave").onclick = function () {
