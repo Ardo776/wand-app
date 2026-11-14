@@ -22,7 +22,7 @@
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
     font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     -webkit-user-select: none; user-select: none; overflow: hidden; }
-  body.night { filter: brightness(0.45); }
+  body.night { filter: brightness(0.6); }
   .app { display: flex; height: 100%; }
 
   /* ---------- Kalender-Sidebar ---------- */
@@ -191,6 +191,9 @@
   var offset = 0;      // Tage relativ zu heute
   var idleTimer = null;
   var lastEdit = 0;
+  var awakeUntil = 0;   // nach einer Berührung nachts 3 Minuten lang hell bleiben
+  document.addEventListener("touchstart", function () { awakeUntil = Date.now() + 180000; document.body.className = ""; }, true);
+  document.addEventListener("mousedown", function () { awakeUntil = Date.now() + 180000; document.body.className = ""; }, true);
 
   function $(id) { return document.getElementById(id); }
   function pad(n) { return (n < 10 ? "0" : "") + n; }
@@ -378,7 +381,7 @@
     var g = h < 11 ? "Guten Morgen" : h < 18 ? "Hallo" : "Guten Abend";
     $("greet").innerHTML = "<b>" + g + (data.name ? ", " + esc(data.name) : "") + "</b>" +
       WD[now.getDay()] + ", " + now.getDate() + ". " + MO[now.getMonth()] + " " + now.getFullYear();
-    document.body.className = (h >= NIGHT_FROM || h < NIGHT_TO) ? "night" : "";
+    document.body.className = ((h >= NIGHT_FROM || h < NIGHT_TO) && Date.now() > awakeUntil) ? "night" : "";
   }
 
   // ---------- Daten laden ----------
