@@ -232,7 +232,7 @@
       </section>
       </div>
     </div>
-    <div class="foot"><span id="foot"></span> &nbsp;·&nbsp; <span id="openSetup" style="text-decoration:underline">Einstellungen</span> &nbsp;·&nbsp; <span id="saverTest" style="text-decoration:underline">Bildschirmschoner</span><span id="camState"></span></div>
+    <div class="foot"><span id="foot"></span> &nbsp;·&nbsp; <span id="openSetup" style="text-decoration:underline">Einstellungen</span><span id="saverWrap" style="display:none"> &nbsp;·&nbsp; <span id="saverTest" style="text-decoration:underline">Bildschirmschoner</span><span id="camState"></span></span></div>
   </main>
 </div>
 
@@ -774,6 +774,7 @@
   };
 
   // ---------- Bildschirmschoner: Bilder und Videos aus dem Ordner "bilder" im Daten-Projekt ----------
+  var SAVER_ENABLED = false;            // Bildschirmschoner aus (Wunsch vom 16.11.2026); true schaltet ihn wieder ein
   var SAVER_AFTER_MS = 2 * 60 * 1000;   // so lange ohne Berührung/Bewegung, dann startet die Diashow
   var SLIDE_MS = 12 * 1000;             // so lange bleibt ein Bild stehen
   var MAX_FILE = 60 * 1024 * 1024;
@@ -782,6 +783,7 @@
   document.addEventListener("touchstart", active, true);
   document.addEventListener("mousedown", active, true);
   function loadMediaList() {
+    if (!SAVER_ENABLED) return;
     if (!store.get("token") || !store.get("repo")) return;
     api("GET", "bilder").then(function (items) {
       var list = [];
@@ -927,7 +929,7 @@
     };
   }
 
-  loadMediaList(); startCamera();
+  if (SAVER_ENABLED) { $("saverWrap").style.display = ""; loadMediaList(); startCamera(); }
   try { var cached = JSON.parse(store.get("cache") || "null"); if (cached && cached.events) data = cached; } catch (e) {}
   renderAll();
   load();
