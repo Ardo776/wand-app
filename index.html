@@ -68,7 +68,25 @@
   .card h2 span { color: var(--text); letter-spacing: 0; }
   .todos { flex: 1.35; }
   .deadlines { flex: 1.2; }
+  .rightcol { flex: 1; display: flex; flex-direction: column; gap: 18px; min-height: 0; min-width: 0; }
   .goals { flex: 1; }
+  .spend { flex: none; padding-bottom: 14px; }
+  .spend .big { font-size: 28px; font-weight: 600; line-height: 1.1; color: var(--accent); white-space: nowrap; }
+  .spend .big small { font-size: 15px; font-weight: 400; color: var(--muted); }
+  .spend .bar { height: 12px; border-radius: 6px; background: var(--panel-2); margin-top: 10px; overflow: hidden; }
+  .spend .bar i { display: block; height: 100%; border-radius: 6px; background: var(--accent); }
+  .spend .sv { font-size: 15px; color: var(--muted); margin-top: 8px; }
+  .spend.warn .big, .spend.warn .sv b { color: var(--due, #ffc266); }
+  .spend.warn .bar i { background: var(--due, #ffc266); }
+  .spend.over .big, .spend.over .sv b { color: var(--exam); }
+  .spend.over .bar i { background: var(--exam); }
+  .spend .orders { display: none; margin-top: 10px; max-height: 190px; overflow-y: auto; }
+  .spend.open .orders { display: block; }
+  .spend .o { display: flex; justify-content: space-between; gap: 10px; font-size: 15px; padding: 5px 0; border-top: 1px solid var(--line); }
+  .spend .o span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .spend .o span:last-child { flex-shrink: 0; white-space: nowrap; }
+  .spend .o i { font-style: normal; color: var(--muted); }
+  .spend .o.back span:last-child { color: var(--muted); }
   .grow2 { display: flex; gap: 8px; margin-top: 8px; }
   .grow2 input { min-width: 0; flex: 1; }
   .goal { padding: 14px 2px; border-bottom: 1px solid var(--line); }
@@ -183,6 +201,11 @@
         <h2>Prüfungen &amp; Fristen</h2>
         <div class="list" id="deadlines"></div>
       </section>
+      <div class="rightcol">
+      <section class="card spend" id="spendCard" style="display:none">
+        <h2>Bestellungen <span id="spendMonth"></span></h2>
+        <div id="spend"></div>
+      </section>
       <section class="card goals">
         <h2><span class="grow">Ziele</span><div class="add-btn" id="goalAdd">+</div></h2>
         <div class="addrow" id="goalForm">
@@ -196,6 +219,7 @@
         </div>
         <div class="list" id="goals"></div>
       </section>
+      </div>
     </div>
     <div class="foot"><span id="foot"></span> &nbsp;·&nbsp; <span id="openSetup" style="text-decoration:underline">Einstellungen</span></div>
   </main>
@@ -425,6 +449,37 @@
     if (t <= 20000) return [50, 100];
     return [100, 500];
   }
+  var MONTHS = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+  var spendOpen = false;
+  function eur(v) { return (Math.round(v * 100) / 100).toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " €"; }
+  function renderSpend() {
+    var sp = data.spending, card = $("spendCard");
+    if (!sp || !(+sp.budget > 0)) { card.style.display = "none"; return; }
+    var now = new Date(), key = now.getFullYear() + "-" + ("0" + (now.getMonth() + 1)).slice(-2);
+    var sum = 0, back = 0, rows = "";
+    var list = (sp.orders || []).filter(function (o) { return o && String(o.date).slice(0, 7) === key; });
+    list.sort(function (a, b) { return String(b.date) < String(a.date) ? -1 : 1; });
+    list.forEach(function (o) {
+      var amt = +o.amount || 0, ref = +o.refund || 0;
+      sum += amt - (o.refunded ? ref : 0);
+      if (ref && !o.refunded) back += ref;
+      var d = toDate(o.date);
+      rows += '<div class="o' + (ref ? " back" : "") + '"><span><i>' + d.getDate() + "." + (d.getMonth() + 1) + ".</i> " + esc(o.shop) +
+        (ref ? " <i>" + (o.refunded ? "\u2713 " : "\u21a9 ") + eur(ref) + "</i>" : "") + '</span><span>' + eur(amt) + '</span></div>';
+    });
+    var budget = +sp.budget, pct = Math.min(100, Math.round(sum / budget * 100)), left = budget - sum;
+    var daysLeft = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate();
+    var sub = left >= 0 ? "Noch <b>" + eur(left) + "</b> übrig für " + (daysLeft + 1) + (daysLeft ? " Tage" : " Tag")
+      : "<b>" + eur(-left) + " über dem Budget.</b> Bestellstopp bis " + MONTHS[(now.getMonth() + 1) % 12] + "!";
+    if (back > 0) sub += "<br>" + eur(back) + " kommen noch zurück (Rücksendungen)";
+    card.className = "card spend" + (left < 0 ? " over" : pct >= 75 ? " warn" : "") + (spendOpen ? " open" : "");
+    card.style.display = "";
+    $("spendMonth").textContent = MONTHS[now.getMonth()];
+    $("spend").innerHTML = '<div class="big">' + eur(sum) + ' <small>von ' + num(budget) + ' €</small></div>' +
+      '<div class="bar"><i style="width:' + pct + '%"></i></div><div class="sv">' + sub + '</div>' +
+      '<div class="orders">' + (rows || '<div class="o"><span>Noch keine Bestellungen</span><span></span></div>') + '</div>';
+  }
+  $("spendCard").onclick = function () { spendOpen = !spendOpen; renderSpend(); };
   function renderGoals() {
     var list = data.goals || [], html = "";
     list.forEach(function (g) {
@@ -544,7 +599,7 @@
   }
 
   // ---------- Daten laden ----------
-  function renderAll() { renderCalendar(); renderTodos(); renderDeadlines(); renderGoals(); tick(); }
+  function renderAll() { renderCalendar(); renderTodos(); renderDeadlines(); renderSpend(); renderGoals(); tick(); }
 
 
   // ---------- Verbindung zu GitHub (dort liegen Termine und To-dos) ----------
@@ -629,7 +684,8 @@
     if (!store.get("token") || !store.get("repo")) { showSetup(); return; }
     requestRefresh(false);
     Promise.all([
-      readJson("data/data.json", {}), readJson("data/todos.json", []), readJson("data/deadlines.json", []), readJson("data/goals.json", [])
+      readJson("data/data.json", {}), readJson("data/todos.json", []), readJson("data/deadlines.json", []), readJson("data/goals.json", []),
+      readJson("data/spending.json", null)
     ]).then(function (r) {
       var d = r[0].value || {}, keep = Date.now() - lastEdit < 20000;
       var seen = {}, deadlines = [];
@@ -641,7 +697,8 @@
       data = {
         name: store.get("name") || d.name || "", events: d.events || [], deadlines: deadlines,
         todos: keep ? data.todos : (Array.isArray(r[1].value) ? r[1].value : []), errors: d.errors || [],
-        goals: keep ? (data.goals || []) : (Array.isArray(r[3].value) ? r[3].value : [])
+        goals: keep ? (data.goals || []) : (Array.isArray(r[3].value) ? r[3].value : []),
+        spending: r[4].value || null
       };
       try { store.set("cache", JSON.stringify(data)); } catch (e) {}
       var stale = d.updated ? " · Termine vom " + shortDate(new Date(d.updated)) + " " + hm(new Date(d.updated)) : "";
@@ -705,6 +762,9 @@
         { id: 4, text: "Bewerbung Werkstudent abschicken" },
         { id: 5, text: "Wäsche waschen", done: true }
       ],
+      spending: { budget: 300, orders: [
+        { date: at(-9, 12), shop: "Amazon", amount: 84.5 }, { date: at(-5, 12), shop: "Zalando", amount: 59.9, refund: 59.9 },
+        { date: at(-2, 12), shop: "Lieferando", amount: 27.3 }] },
       goals: [
         { id: "g1", title: "Pissgroschen", current: 1250, target: 5000, unit: "€", due: at(200, 0) },
         { id: "g3", title: "Seminararbeit", due: at(32, 0), steps: [
