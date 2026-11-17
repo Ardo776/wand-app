@@ -880,6 +880,21 @@
   setInterval(tick, 15000);
   // Mitternacht: Kalender auf neuen Tag umstellen
   setInterval(function () { if (offset === 0) renderCalendar(); }, 60000);
+  // Neue Version der Seite automatisch laden (alle 10 Minuten nachsehen)
+  var pageText = null;
+  function checkUpdate() {
+    var x = new XMLHttpRequest();
+    x.open("GET", location.pathname + "?v=" + Date.now());
+    x.setRequestHeader("Cache-Control", "no-cache");
+    x.onload = function () {
+      if (x.status !== 200 || x.responseText.indexOf("checkUpdate") < 0) return;
+      if (pageText === null) pageText = x.responseText;
+      else if (x.responseText !== pageText) location.reload();
+    };
+    x.send();
+  }
+  checkUpdate();
+  setInterval(checkUpdate, 10 * 60 * 1000);
 })();
 </script>
 </body>
